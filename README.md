@@ -22,7 +22,7 @@ This can be done by right clicking on your project->Open Module Settings->Depend
 Add the blescanner module as a module dependency for bearcastlib by doing the same thing
 
 #API
-Instantiate a new BearCastUtil object in your Activity's onCreate method. You must pass in a Context into the constructor.
+Instantiate a new BearCastUtil object in your Activity's onCreate method. You must pass in a Context into the constructor and a name as an identifier.
 
 Override your onResume() method and call BearCastUtil.startBluetoothScan() to start a scan for nearby BearCast beacons.
 
