@@ -17,6 +17,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
@@ -35,12 +36,11 @@ public class BearCastUtil {
     private static final long TIMER_PERIOD = 5000;
     private static final long TIMER_DELAY = 500;
     private static final String FIRESTORM_MAC = "EC:C1:8E:1D:48:60";
-    private static final String TEST_LOCATION = "USA/California/Berkeley/Soda/410";
+//    private static final String TEST_LOCATION = "USA/California/Berkeley/Soda/410";
     private static final String FIRESTORM_MAC2 = "F9:86:10:B1:19:F9";
-    private static final String TEST_LOCATION2 = "USA/California/Berkeley/Soda/610";
-
+//    private static final String TEST_LOCATION2 = "USA/California/Berkeley/Soda/610";
     private static final String FIRESTORM_MAC3 = "EC:C1:8E:1D:48:60";
-    private static final String TEST_LOCATION3 = "USA/California/Berkeley/Soda/510";
+//    private static final String TEST_LOCATION3 = "USA/California/Berkeley/Soda/510";
 
     private static final String TEST_IP = "136.152.38.117";
     private static final String SERVER_PORT = "8080";
@@ -82,7 +82,7 @@ public class BearCastUtil {
     private String mCurrentLocation;
     private String mCurrentClosestMac;
 
-    private HashMap<String,String> mBleMacToLocation;
+    private HashSet<String> mValidMacAddresses;
 
     private Timer mBleTimer;
     private BLEScanner mBleScanner;
@@ -100,10 +100,10 @@ public class BearCastUtil {
             Log.e(TAG, "Failed to initialize BLE scanner");
         }
 
-        mBleMacToLocation = new HashMap<String,String>(); // TODO: Hard code this map for now
-        mBleMacToLocation.put(FIRESTORM_MAC, TEST_LOCATION);
-        mBleMacToLocation.put(FIRESTORM_MAC2, TEST_LOCATION2);
-        mBleMacToLocation.put(FIRESTORM_MAC3, TEST_LOCATION3);
+        mValidMacAddresses = new HashSet<>(); // TODO: Hard code this set for now
+        mValidMacAddresses.add(FIRESTORM_MAC);
+        mValidMacAddresses.add(FIRESTORM_MAC2);
+        mValidMacAddresses.add(FIRESTORM_MAC3);
 
         muuid = DeviceUUID.getDeviceUUID(sContext).toString();
         sClosestDisplayTopic = null;
@@ -144,13 +144,13 @@ public class BearCastUtil {
     }
 
     // Gets the client's current location
-    // TODO: Link this with BearLoc to get real location
-    private String getLocation() {
-        if (mCurrentClosestMac != null){
-            mCurrentLocation = mBleMacToLocation.get(mCurrentClosestMac);
-        }
-        return mCurrentLocation;
-    }
+//    @Deprecated
+//    private String getLocation() {
+//        if (mCurrentClosestMac != null){
+//            mCurrentLocation = mBleMacToLocation.get(mCurrentClosestMac);
+//        }
+//        return mCurrentLocation;
+//    }
 
     private class MyMqttCallback implements MqttCallback {
         @Override
@@ -253,9 +253,6 @@ public class BearCastUtil {
         }
     }
 
-
-
-
     private class ConnectRunnable implements Runnable {
 
         @Override
@@ -276,6 +273,12 @@ public class BearCastUtil {
         @Override
         public void run() {
             Log.d(TAG, "RUNNING");
+
+            if (mCurrentLocation == null) {
+                Log.e(TAG, "CURRENT LOCATION IS NULL");
+                return;
+            }
+
             final JSONObject json = new JSONObject();
             Long epoch = System.currentTimeMillis()/1000;
 
@@ -290,7 +293,7 @@ public class BearCastUtil {
             try {
                 json.put("req_type", "discover");
                 final JSONObject reqContent = new JSONObject();
-                reqContent.put("location", getLocation());
+                reqContent.put("location", mCurrentLocation);
                 json.put("req_content", reqContent);
 
                 json.put("reply_topic", mResultTopic);
@@ -316,6 +319,53 @@ public class BearCastUtil {
 
         }
     }
+
+
+    private class GetLocationRunnable implements Runnable {
+
+        @Override
+        public void run() {
+            Log.d(TAG, "GETTING LOCATION");
+
+            final JSONObject json = new JSONObject();
+            Long epoch = System.currentTimeMillis() / 1000;
+
+            try {
+                mResultTopic = muuid + "-reply";
+                IMqttToken token = mMQTTClient.subscribe(mResultTopic, 0);
+                token.waitForCompletion();
+            } catch (MqttException e ) {
+                e.printStackTrace();
+            }
+
+            try {
+                json.put("req_type", "get_location");
+                final JSONObject reqContent = new JSONObject();
+
+                reqContent.put("key", mCurrentClosestMac);
+                json.put("req_content", reqContent);
+
+                json.put("reply_topic", mResultTopic);
+
+                json.put("req_num", epoch);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                MqttMessage message = new MqttMessage();
+                message.setPayload(json.toString().getBytes());
+                mRequestMapping.put(epoch, "get_location");
+                IMqttDeliveryToken token = mMQTTClient.publish(DISCOVERY_TOPIC, message);
+                token.waitForCompletion();
+                Log.d(TAG, "DONE GETTING LOCATION");
+
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     private class HeartBeatTask extends TimerTask {
         @Override
@@ -374,7 +424,7 @@ public class BearCastUtil {
                 int signalStrength = e.getValue();
                 Log.d(TAG, "RSSI: " + signalStrength);
 
-                if (signalStrength > maxStrength && mBleMacToLocation.containsKey(macAddr)) {
+                if (signalStrength > maxStrength && mValidMacAddresses.contains(macAddr)) {
                     Log.d(TAG, "Found closest mac address: " + macAddr);
                     maxStrength = signalStrength;
                     newClosestMac = macAddr;
@@ -384,7 +434,7 @@ public class BearCastUtil {
             if (newClosestMac != null && !newClosestMac.equals(mCurrentClosestMac)) {
                 mCurrentClosestMac = newClosestMac;
             }
-            mNetworkThreadPool.execute(new DiscoverRunnable());
+            mNetworkThreadPool.execute(new GetLocationRunnable());
         }
     }
 }
