@@ -226,6 +226,7 @@ public class BearCastUtil {
 
                 String message = sCastText;
                 reqContent.put("data", message);
+                reqContent.put("name", sName);
                 json.put("req_content", reqContent);
 
                 mResultTopic = muuid + "-reply";
