@@ -37,7 +37,11 @@ public class BearCastUtil {
     private static final String FIRESTORM_MAC = "EC:C1:8E:1D:48:60";
     private static final String TEST_LOCATION = "USA/California/Berkeley/Soda/410";
     private static final String FIRESTORM_MAC2 = "F9:86:10:B1:19:F9";
-    private static final String TEST_LOCATION2 = "USA/California/Berkeley/Soda/510";
+    private static final String TEST_LOCATION2 = "USA/California/Berkeley/Soda/610";
+
+    private static final String FIRESTORM_MAC3 = "EC:C1:8E:1D:48:60";
+    private static final String TEST_LOCATION3 = "USA/California/Berkeley/Soda/510";
+
     private static final String TEST_IP = "136.152.38.117";
     private static final String SERVER_PORT = "8080";
     private static final String MQTT_SERVER = "tcp://54.215.11.207:9009";
@@ -84,9 +88,12 @@ public class BearCastUtil {
     private BLEScanner mBleScanner;
     private BleCallback mBleCallback;
 
+    private Timer mHeartbeatTimer;
+    private String sName;
 
-    public BearCastUtil(Context context) {
+    public BearCastUtil(Context context, String name) {
         sContext = context;
+        sName = name;
 
         mBleScanner = new BLEScanner(sContext);
         if (!mBleScanner.enable()) {
@@ -96,6 +103,7 @@ public class BearCastUtil {
         mBleMacToLocation = new HashMap<String,String>(); // TODO: Hard code this map for now
         mBleMacToLocation.put(FIRESTORM_MAC, TEST_LOCATION);
         mBleMacToLocation.put(FIRESTORM_MAC2, TEST_LOCATION2);
+        mBleMacToLocation.put(FIRESTORM_MAC3, TEST_LOCATION3);
 
         muuid = DeviceUUID.getDeviceUUID(sContext).toString();
         sClosestDisplayTopic = null;
@@ -113,10 +121,15 @@ public class BearCastUtil {
 
     public void startBluetoothScan() {
         mBleTimer.scheduleAtFixedRate(new BleScannerTask(), TIMER_DELAY, TIMER_PERIOD);
+
+        mHeartbeatTimer = new Timer();
+        mHeartbeatTimer.scheduleAtFixedRate(new HeartBeatTask(), TIMER_DELAY, TIMER_PERIOD);
     }
 
     public void stopBlueToothScan() {
         mBleTimer.cancel();
+
+        mHeartbeatTimer.cancel();
     }
 
 
@@ -173,6 +186,16 @@ public class BearCastUtil {
                     } else if (mRequestMapping.get(reqNum) == "cast") {
                         Log.d(TAG, "FINISHED CASTING");
                         mRequestMapping.remove(reqNum);
+                    } else if (mRequestMapping.get(reqNum).equals("heartbeat")) {
+                        Log.d(TAG, "FINISHED HEARTBEAT");
+                        mRequestMapping.remove(reqNum);
+                    } else if (mRequestMapping.get(reqNum).equals("get_location")) {
+                        Log.d(TAG, "FINISHED GET LOCATION");
+                        mRequestMapping.remove(reqNum);
+                        JSONObject result = msg.getJSONObject("result");
+                        mCurrentLocation = result.getString("location");
+                        // Discover after getting a location
+                        mNetworkThreadPool.execute(new DiscoverRunnable());
                     }
                 }
             } catch (JSONException e) {
@@ -290,6 +313,44 @@ public class BearCastUtil {
                 e.printStackTrace();
             }
 
+        }
+    }
+
+    private class HeartBeatTask extends TimerTask {
+        @Override
+        public void run() {
+            Log.d(TAG, "HEARTBEAT");
+
+            final JSONObject json = new JSONObject();
+            Long epoch = System.currentTimeMillis()/1000;
+
+            try {
+                json.put("req_type", "heartbeat");
+                final JSONObject reqContent = new JSONObject();
+
+                reqContent.put("data", sName);
+                json.put("req_content", reqContent);
+
+                mResultTopic = muuid + "-reply";
+                json.put("reply_topic", muuid + "-reply");
+
+                json.put("req_num", epoch);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                MqttMessage message = new MqttMessage();
+                message.setPayload(json.toString().getBytes());
+                mRequestMapping.put(epoch, "heartbeat");
+                IMqttDeliveryToken token = mMQTTClient.publish(sClosestDisplayTopic, message);
+                token.waitForCompletion();
+                Log.d(TAG, "DONE HEARTBEAT");
+
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
         }
     }
 
