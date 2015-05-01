@@ -113,13 +113,11 @@ public class BearCastUtil {
         mMQTTClient = new MqttAndroidClient(sContext, MQTT_SERVER, MqttClient.generateClientId());
         mMQTTClient.setCallback(mMqttCallback);
         mNetworkThreadPool.execute(new ConnectRunnable());
-
-        mBleTimer = new Timer();
-        mBleCallback = new BleCallback();
     }
 
-
     public void startBluetoothScan() {
+        mBleTimer = new Timer();
+        mBleCallback = new BleCallback();
         mBleTimer.scheduleAtFixedRate(new BleScannerTask(), TIMER_DELAY, TIMER_PERIOD);
 
         mHeartbeatTimer = new Timer();
@@ -209,7 +207,6 @@ public class BearCastUtil {
             Log.d(TAG, "Delivery complete");
         }
     }
-
 
     private class CastRunnable implements Runnable {
 
@@ -320,7 +317,6 @@ public class BearCastUtil {
         }
     }
 
-
     private class GetLocationRunnable implements Runnable {
 
         @Override
@@ -365,8 +361,7 @@ public class BearCastUtil {
             }
         }
     }
-
-
+    
     private class HeartBeatTask extends TimerTask {
         @Override
         public void run() {
