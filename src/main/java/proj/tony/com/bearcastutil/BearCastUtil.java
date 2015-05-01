@@ -135,9 +135,9 @@ public class BearCastUtil {
         sCastText = text;
         if (sClosestDisplayTopic != null) {
             mNetworkThreadPool.execute(new CastRunnable());
-            Toast.makeText(sContext, "Sending Message", Toast.LENGTH_SHORT).show();
+            Toast.makeText(sContext, "Sending Message.", Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(sContext, "Waiting to Discover Closest Device", Toast.LENGTH_SHORT).show();
+            Toast.makeText(sContext, "Waiting to Discover Closest Device.", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -273,6 +273,7 @@ public class BearCastUtil {
 
             if (mCurrentLocation == null) {
                 Log.e(TAG, "CURRENT LOCATION IS NULL");
+                Toast.makeText(sContext, "Still finding location.", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -361,7 +362,7 @@ public class BearCastUtil {
             }
         }
     }
-    
+
     private class HeartBeatTask extends TimerTask {
         @Override
         public void run() {
