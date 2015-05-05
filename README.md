@@ -55,7 +55,7 @@ protected void onStop() {
 Call BearCastUtil.deviceCast(String[] data, String[] datatypes, String templateName) to cast information to the nearest BearCast display. This message will insert the arguments in the data array into the corresponding HTML template with the given template name. Then, this information will be displayed in the device specific section of the display. e.g.
 ```
 String[] dataArray = {"40", "done"};
-String[] dataTypes = {"string", "string"};
+String[] dataTypes = {"number", "string"};
 String templateName = "riceCooker.html"
 sBearCastUtil.deviceCast(dataArray, dataTypes, templateName);
 ```
