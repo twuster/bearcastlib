@@ -21,6 +21,20 @@ This can be done by right clicking on your project->Open Module Settings->Depend
 
 Add the blescanner module as a module dependency for bearcastlib by doing the same thing
 
+Add a service under your application tag to your AndroidManifest.xml to start MQTT e.g.
+```
+<service android:name="org.eclipse.paho.android.service.MqttService" />
+```
+
+Add permissions so we can steal your data. jk. e.g.
+```
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.BLUETOOTH" />
+<uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<uses-permission android:name="android.permission.INTERNET" />
+```
+
 #API
 Instantiate a new BearCastUtil object in your Activity's onCreate method. You must pass in a Context into the constructor and a name as an identifier. e.g.
 ```
