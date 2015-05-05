@@ -442,7 +442,7 @@ public class BearCastUtil {
             if (sClosestDisplayTopic == null) {
                 return;
             }
-            
+
             Log.d(TAG, "HEARTBEAT");
 
             final JSONObject json = new JSONObject();
