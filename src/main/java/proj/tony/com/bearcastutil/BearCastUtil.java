@@ -13,6 +13,7 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -41,6 +42,8 @@ public class BearCastUtil {
 //    private static final String TEST_LOCATION2 = "USA/California/Berkeley/Soda/610";
     private static final String FIRESTORM_MAC3 = "EC:C1:8E:1D:48:60";
 //    private static final String TEST_LOCATION3 = "USA/California/Berkeley/Soda/510";
+    private static final String FIRESTORM_MAC4 = "D0:F9:90:B0:AE:DB";
+
 
     private static final String TEST_IP = "136.152.38.117";
     private static final String SERVER_PORT = "8080";
@@ -107,6 +110,7 @@ public class BearCastUtil {
         mValidMacAddresses.add(FIRESTORM_MAC);
         mValidMacAddresses.add(FIRESTORM_MAC2);
         mValidMacAddresses.add(FIRESTORM_MAC3);
+        mValidMacAddresses.add(FIRESTORM_MAC4);
 
         muuid = DeviceUUID.getDeviceUUID(sContext).toString();
         sClosestDisplayTopic = null;
@@ -281,9 +285,12 @@ public class BearCastUtil {
                 json.put("req_type", "device");
                 final JSONObject reqContent = new JSONObject();
 
+
+
+
                 final JSONObject dataJSON = new JSONObject();
-                dataJSON.put("data", sDeviceCastData);
-                dataJSON.put("datatype", sDeviceCastDataTypes);
+                dataJSON.put("data", stringArrayToJsonArray(sDeviceCastData));
+                dataJSON.put("datatype", stringArrayToJsonArray(sDeviceCastDataTypes));
                 dataJSON.put("template", sDeviceCastTemplateName);
 
                 reqContent.put("data", dataJSON);
@@ -498,5 +505,14 @@ public class BearCastUtil {
             }
             mNetworkThreadPool.execute(new GetLocationRunnable());
         }
+    }
+
+    private JSONArray stringArrayToJsonArray(String[] input) {
+        JSONArray output = new JSONArray();
+        for (String elem: input) {
+            output.put(elem);
+        }
+
+        return output;
     }
 }
