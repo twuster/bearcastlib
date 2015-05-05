@@ -61,6 +61,9 @@ public class BearCastUtil {
     private static String sClosestDisplayTopic;
     private static String sCastText;
     private static Context sContext;
+    private static String[] sDeviceCastData;
+    private static String[] sDeviceCastDataTypes;
+    private static String sDeviceCastTemplateName;
 
     /*
     * Gets the number of available cores
@@ -141,6 +144,18 @@ public class BearCastUtil {
         }
     }
 
+    public void deviceCast(String[] data, String[] datatypes, String templateName) {
+        sDeviceCastData = data;
+        sDeviceCastDataTypes = datatypes;
+        sDeviceCastTemplateName = templateName;
+        if (sClosestDisplayTopic != null) {
+            mNetworkThreadPool.execute(new DeviceCastRunnable());
+            Toast.makeText(sContext, "Sending Message.", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(sContext, "Waiting to Discover Closest Device.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     // Gets the client's current location
 //    @Deprecated
 //    private String getLocation() {
@@ -194,6 +209,9 @@ public class BearCastUtil {
                         mCurrentLocation = result.getString("location");
                         // Discover after getting a location
                         mNetworkThreadPool.execute(new DiscoverRunnable());
+                    } else if (mRequestMapping.get(reqNum).equals("device")) {
+                        Log.d(TAG, "FINISHED DEVICECAST");
+                        mRequestMapping.remove(reqNum);
                     }
                 }
             } catch (JSONException e) {
@@ -242,6 +260,52 @@ public class BearCastUtil {
                 IMqttDeliveryToken token = mMQTTClient.publish(sClosestDisplayTopic, message);
                 token.waitForCompletion();
                 Log.d(TAG, "DONE CASTING");
+
+            } catch (MqttException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    private class DeviceCastRunnable implements Runnable {
+
+        @Override
+        public void run() {
+            Log.d(TAG, "DEVICECASTING");
+
+            final JSONObject json = new JSONObject();
+            Long epoch = System.currentTimeMillis()/1000;
+
+            try {
+                json.put("req_type", "device");
+                final JSONObject reqContent = new JSONObject();
+
+                final JSONObject dataJSON = new JSONObject();
+                dataJSON.put("data", sDeviceCastData);
+                dataJSON.put("datatype", sDeviceCastDataTypes);
+                dataJSON.put("template", sDeviceCastTemplateName);
+
+                reqContent.put("data", dataJSON);
+                reqContent.put("name", sName);
+                json.put("req_content", reqContent);
+
+                mResultTopic = muuid + "-reply";
+                json.put("reply_topic", muuid + "-reply");
+
+                json.put("req_num", epoch);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                MqttMessage message = new MqttMessage();
+                message.setPayload(json.toString().getBytes());
+                mRequestMapping.put(epoch, "cast");
+                IMqttDeliveryToken token = mMQTTClient.publish(sClosestDisplayTopic, message);
+                token.waitForCompletion();
+                Log.d(TAG, "DONE DEVICECASTING");
 
             } catch (MqttException e) {
                 e.printStackTrace();
@@ -362,6 +426,8 @@ public class BearCastUtil {
             }
         }
     }
+
+
 
     private class HeartBeatTask extends TimerTask {
         @Override
