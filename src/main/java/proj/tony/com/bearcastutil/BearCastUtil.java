@@ -439,6 +439,10 @@ public class BearCastUtil {
     private class HeartBeatTask extends TimerTask {
         @Override
         public void run() {
+            if (sClosestDisplayTopic == null) {
+                return;
+            }
+            
             Log.d(TAG, "HEARTBEAT");
 
             final JSONObject json = new JSONObject();
